@@ -47,6 +47,13 @@ requirements by running the command as root:
 
     apt install nbd-client build-essential btrfs-tools bonnie++ fio
 
+# Usage
+
+To compile and run a large number of check programs on every part of the
+`woram` C++ library, run
+
+    make check
+
 # License
 
 We hope that you might find something here useful, and that you will be

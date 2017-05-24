@@ -28,7 +28,7 @@ DATAF = tenmeg.dat
 UTILS =
 UTIL_OBJS = $(UTILS:=.o)
 
-all: $(TESTS:%=test_%)
+all: $(TESTS:%=test_%) .gitignore
 check: $(CHECKS)
 	@echo "All $(words $^) checks passed."
 
@@ -49,6 +49,9 @@ $(CHECKS): check_%: test_%
 $(VALGS): valg_%: test_%
 	@echo -n "Running $<... "
 	@valgrind --leak-check=full ./$<
+
+.gitignore: Makefile
+	echo $(TESTS:%=test_%) $(DATAF) | tr ' ' '\n' | sort > $@
 
 clean:
 	rm -f $(TESTS:%=test_%.o) $(TESTS:%=test_%) $(TESTS:%=test_%.d) $(DATAF)
