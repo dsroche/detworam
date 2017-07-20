@@ -17,6 +17,7 @@ extern "C" {
 #include <cstdint>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <utility>
 #include <sstream>
 #include <vector>
@@ -50,9 +51,24 @@ static inline u_int64_t ntohll(u_int64_t a) {
 
 namespace nbdcpp {
 
-static inline std::ostream& errout() { return std::cerr; }
-static inline std::ostream& logout() { return std::cout; }
-static inline std::ostream& infoout() { return std::cout; }
+static inline std::ostream*& errout_ptr() {
+  static std::ostream* ptr = &std::cerr;
+  return ptr;
+}
+
+static inline std::ostream*& logout_ptr() {
+  static std::ostream* ptr = &std::cout;
+  return ptr;
+}
+
+static inline std::ostream*& infoout_ptr() {
+  static std::ostream* ptr = &std::cout;
+  return ptr;
+}
+
+static inline std::ostream& errout() { return *errout_ptr(); }
+static inline std::ostream& logout() { return *logout_ptr(); }
+static inline std::ostream& infoout() { return *infoout_ptr(); }
 
 typedef uint64_t size_t;
 typedef unsigned char byte;
@@ -333,9 +349,6 @@ class NbdServer {
       infoout() << " /dev/nbd0 -block-size " << _thedev.blocksize() << "\n"
         << "(optionally changing /dev/nbd0 to another nbd device or adding other options)"
         << std::endl;
-      infoout() << "Remember to run (as root) modprobe nbd in order to load the nbd module first." << std::endl;
-      infoout() << "Send SIGINT to gracefully kill the server, as in:\n"
-        << "  kill -SIGINT " << getpid() << std::endl;
     }
 
     virtual ~NbdServer() {
@@ -570,13 +583,47 @@ class NbdServer {
     }
 };
 
-std::string nbd_usage_line() { return " ([host:][port] | -u file)"; }
+std::string nbd_usage_line() { return " ([host:][port] | -u socketfile) [-l logfile] [-d] [-q]"; }
 
 void nbd_usage_doc(std::ostream& out) {
   out << "  host can be \"localhost\" or an IPv4 dotted pair; default is localhost\n"
       << "  port defaults to " << IP4Sock::DEFPORT << "\n"
-      << "  -u means to use a unix socket associated to the given file"
+      << "  -u means to use a unix socket associated to the given file\n"
+      << "  -l specifies the file to append log and error messages to instead of stdout/stderr\n"
+      << "  -d means to go into the background (daemonize). The -l option MUST be specified.\n"
+      << "  -q means \"quiet\": suppress all output except (possibly) the daemon PID"
       << std::endl;
+}
+
+template <typename ServT>
+int nbdserv_run(ServT&& serv, bool daemonize) {
+  if (daemonize) {
+    auto pid = fork();
+    if (pid < 0) {
+      perror("Error: Could not fork for daemon");
+      return 1;
+    }
+    if (pid) {
+      // parent
+      infoout() << "Send SIGINT to gracefully kill the server, as in:\n"
+        << "  kill -SIGINT ";
+      // print pid even if in quiet mode
+      std::cout << pid << std::endl;
+      _exit(0);
+    }
+    if (setsid() < 0) {
+      perror("Error: Could not daemonize");
+      return 1;
+    }
+    logout() << "Daemon running on PID " << getpid() << std::endl;
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+  } else {
+    infoout() << "Type Ctrl-C to gracefully kill the server." << std::endl;
+  }
+  serv.connect_many();
+  return 0;
 }
 
 template <typename DevT, typename UsageFun, typename... DevArgs>
@@ -584,6 +631,10 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
   // process command line arguments
   bool unix = false;
   bool gothost = false;
+  bool daemonize = false;
+  bool quiet = false;
+  std::ofstream nullfile;
+  std::ofstream logfile;
   std::string host = "localhost";
   int port = IP4Sock::DEFPORT;
   for (; argind < argc; ++argind) {
@@ -591,6 +642,23 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
     if (curarg == "-u") {
       unix = true;
       // the host will be considered the filename
+    } else if (curarg == "-l") {
+      if (++argind >= argc) {
+        usage();
+        return 1;
+      }
+      logfile.open(argv[argind], std::ofstream::out|std::ofstream::app);
+      if (!logfile.is_open()) {
+        errout() << "Error: could not open log file " << argv[argind] << "\n";
+        return 1;
+      }
+    } else if (curarg == "-d") {
+      daemonize = true;
+    } else if (curarg == "-q") {
+      quiet = true;
+      infoout_ptr() = &nullfile;
+      logout_ptr() = &logfile;
+      errout_ptr() = &logfile;
     } else if (curarg.find('-') == 0) {
       // some other option, not supported
       usage();
@@ -621,6 +689,13 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
     }
   }
 
+  // check log file if daemonized
+  if (daemonize && !logfile.is_open()) {
+    errout() << "Error: daemon option requires log file\n";
+    usage();
+    return 1;
+  }
+
   // check socket file for unix sockets
   if (unix) {
     if (!gothost) {
@@ -629,13 +704,17 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
     }
     // the socket file must not exist yet
     if (access(host.c_str(), F_OK) == 0) {
-      infoout() << "Error: socket file " << host
-          << " already exists. Delete it now? (Y/n) " << std::flush;
-      std::string resp;
-      std::getline(std::cin, resp);
-      auto letter = std::find_if(resp.begin(), resp.end(),
-          [](int ch){return !std::isspace(ch);});
-      if (letter != resp.end() && std::tolower(*letter) != 'y') return 1;
+      if (quiet) {
+        logout() << "Warning: clobbering existing socket file " << host << std::endl;
+      } else {
+        infoout() << "Error: socket file " << host
+            << " already exists. Delete it now? (Y/n) " << std::flush;
+        std::string resp;
+        std::getline(std::cin, resp);
+        auto letter = std::find_if(resp.begin(), resp.end(),
+            [](int ch){return !std::isspace(ch);});
+        if (letter != resp.end() && std::tolower(*letter) != 'y') return 1;
+      }
     } else {
       // try to create the file
       int fd = creat(host.c_str(), 0777);
@@ -648,15 +727,24 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
     unlink(host.c_str());
   }
 
-  if (unix) {
-    NbdServer<DevT,UnixSock> serv(UnixSock(host), std::forward<DevArgs>(devargs)...);
-    serv.connect_many();
-  } else {
-    NbdServer<DevT,IP4Sock> serv(IP4Sock(port, host), std::forward<DevArgs>(devargs)...);
-    serv.connect_many();
+  // redirect to log file now
+  if (logfile.is_open()) {
+    logfile << "Log started\n";
+    errout_ptr() = &logfile;
+    logout_ptr() = &logfile;
   }
 
-  return 0;
+  if (unix) {
+    return nbdserv_run(
+        NbdServer<DevT,UnixSock>
+          (UnixSock(host), std::forward<DevArgs>(devargs)...),
+        daemonize);
+  } else {
+    return nbdserv_run(
+        NbdServer<DevT,IP4Sock>
+          (IP4Sock(port, host), std::forward<DevArgs>(devargs)...),
+        daemonize);
+  }
 }
 
 } // namespace nbdcpp
