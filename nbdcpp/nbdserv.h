@@ -5,6 +5,7 @@ extern "C" {
 #include <endian.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -17,24 +18,20 @@ extern "C" {
 #include <string>
 #include <iostream>
 #include <utility>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+#include <cctype>
 
 extern "C" {
 /* copied from clisrv.h in NBD distribution */
 #define INIT_PASSWD "NBDMAGIC"
 #define NBD_OPT_EXPORT_NAME	(1)
-#define NBD_OPT_ABORT		(2)
-#define NBD_OPT_LIST		(3)
-#define NBD_REP_ACK		(1)
-#define NBD_REP_SERVER		(2)
-#define NBD_REP_FLAG_ERROR	(1 << 31)
-#define NBD_REP_ERR_UNSUP	(1 | NBD_REP_FLAG_ERROR)
 #define NBD_FLAG_FIXED_NEWSTYLE (1 << 0)
 #define NBD_FLAG_NO_ZEROES	(1 << 1)
 #define NBD_FLAG_C_NO_ZEROES	NBD_FLAG_NO_ZEROES
 /* copied from clisrv.c in NBD distribution */
-static constexpr uint64_t cliserv_magic = 0x00420281861253LL;
 static constexpr uint64_t opts_magic = 0x49484156454F5054LL;
-static constexpr uint64_t rep_magic = 0x3e889045565a9LL;
 static inline u_int64_t ntohll(u_int64_t a) {
 #if __BYTE_ORDER == __BIG_ENDIAN
   return a;
@@ -60,6 +57,28 @@ static inline std::ostream& infoout() { return std::cout; }
 typedef uint64_t size_t;
 typedef unsigned char byte;
 
+// default method to read in multiple bytes at once
+// reads count blocks from dev and stores the result in data
+template <class Dev>
+void multiread_default(const Dev& dev, size_t index, size_t count, byte* data) {
+  byte* curblock = data;
+  for (size_t curind = index; dev.good() && curind < index + count; ++curind) {
+    dev.read(curind, curblock);
+    curblock += dev.blocksize();
+  }
+}
+
+// default method to write multiple bytes at once
+// writes count blocks from the raw array data to dev
+template <class Dev>
+void multiwrite_default(Dev& dev, size_t index, size_t count, const byte* data) {
+  const byte* curblock = data;
+  for (size_t curind = index; dev.good() && curind < index + count; ++curind) {
+    dev.write(curind, curblock);
+    curblock += dev.blocksize();
+  }
+}
+
 // this is an ARCHETYPE
 // you should make a class with these same methods in order
 // to implement a custom NBD server backend
@@ -73,7 +92,7 @@ class DevExample {
     // from the NbdServer constructor (see below).
 
     // should return false if some unrecoverable error has occurred
-    bool good() const { return true; }
+    bool good() const;
 
     // number of bytes per block
     static constexpr size_t blocksize() { return 1024; }
@@ -83,42 +102,24 @@ class DevExample {
 
     // read a single block from the device
     // index is the index of the block
-    // data is a pointer to an array of size at last blocksize()
+    // data is a pointer to an array of size at least blocksize()
     void read(size_t index, byte* data) const;
 
     // write a single block to the device
     // index is the index of the block
-    // data is a pointer to an array of size at last blocksize()
+    // data is a pointer to an array of size at least blocksize()
     void write(size_t index, const byte* data);
 
-    // Read a number of blocks from device and write them
-    // to the given file descriptor.
-    // you can use this method as-is or optimize further.
-    bool read_to_fd(size_t index, size_t count, int fd) const {
-      byte block[blocksize()];
-      for (size_t curind = index; curind < index + count; ++curind) {
-        read(curind, block);
-        if (::write(fd, block, blocksize()) != blocksize()) {
-          errout() << "Error writing block to stream\n";
-          return false;
-        }
-      }
-      return true;
+    // read multiple blocks at once
+    // you may use the default implementation here, or optimize further
+    void multiread(size_t index, size_t count, byte* data) const {
+      multiread_default(*this, index, count, data);
     }
 
-    // Write a number of blocks to device from the given file
-    // descriptor.
-    // You can use this method as-is or optimize futher.
-    bool write_from_fd(size_t index, size_t count, int fd) {
-      byte block[blocksize()];
-      for (size_t curind = index; curind < index + count; ++curind) {
-        if (::read(fd, block, blocksize()) != blocksize()) {
-          errout() << "Error reading block from stream\n";
-          return false;
-        }
-        write(curind, block);
-      }
-      return true;
+    // write multiple blocks at once
+    // you may use the default implementation here, or optimize further
+    void multiwrite(size_t index, size_t count, const byte* data) {
+      multiwrite_default(*this, index, count, data);
     }
 
     // returns true iff the flush operation is supported
@@ -263,18 +264,28 @@ class NbdServer {
     struct sigaction oldhandler = {};
 
     bool read_all(int csock, void* dest, size_t len) const {
-      auto got = recv(csock, dest, len, MSG_WAITALL);
-      if (got != (ssize_t)len) {
-        errout() << "Error trying to read " << len << " bytes\n";
-        return false;
+      byte* curdest = reinterpret_cast<byte*>(dest);
+      size_t remain = len;
+      while (remain) {
+        auto got = recv(csock, curdest, remain, 0);
+        if (got <= 0) {
+          errout() << "Error trying to read " << len << " bytes:\n";
+          if (got == 0) errout() << "client closed connection\n";
+          else perror("error code");
+          return false;
+        }
+        remain -= got;
+        curdest += got;
       }
-      else return true;
+      return true;
     }
 
     bool write_all(int csock, const void* src, size_t len) const {
       auto sent = send(csock, src, len, 0);
       if (sent != (ssize_t)len) {
         errout() << "Error trying to send " << len << " bytes\n";
+        if (sent < (ssize_t)len) errout() << "client closed connection\n";
+        else perror("error code");
         return false;
       }
       else return true;
@@ -292,19 +303,6 @@ class NbdServer {
       }
 
       return read_all(fd, buf, numbytes);
-    }
-
-    // send a reply during the negotiation phase
-    // copied from nbd-server.c
-    bool send_reply(int fd, uint32_t opt, uint32_t reply_type, size_t datasize) {
-      uint64_t magic = htonll(rep_magic);
-      opt = htonl(opt);
-      reply_type = htonl(reply_type);
-      datasize = htonl(datasize);
-      return write_all(fd, &magic, sizeof magic)
-        &&   write_all(fd, &opt, sizeof opt)
-        &&   write_all(fd, &reply_type, sizeof reply_type)
-        &&   write_all(fd, &datasize, sizeof datasize);
     }
 
     // return true if SIGINT has been set
@@ -345,6 +343,10 @@ class NbdServer {
       sigaction(SIGINT, &oldhandler, nullptr);
     }
 
+    // don't allow copying
+    NbdServer(const NbdServer&) = delete;
+    NbdServer& operator= (const NbdServer&) = delete;
+
     // returns true on one successful connection
     bool connect_once(bool stophere=true) {
       SockT client_addr;
@@ -377,7 +379,8 @@ class NbdServer {
     // processes NBD requests over a running connection
     // returns whether it's POSSIBLE to restart with a new connection
     bool run_connection(int csock) {
-      size_t blocksize = _thedev.blocksize();
+      std::vector<byte> buffer;
+      constexpr size_t blocksize = _thedev.blocksize();
       size_t numblocks = _thedev.numblocks();
       struct nbd_request request;
       struct nbd_reply reply = {};
@@ -385,6 +388,18 @@ class NbdServer {
       reply.error = htonl(0);
       bool go = true;
       bool good = true;
+
+      // lambda to send an error reply message
+      auto reply_err =
+        [this, &csock, &reply, &go, &good]
+        (int ercode, const char* msg)
+      {
+        logout() << "Error: " << msg << "\n";
+        reply.error = htonl(ercode);
+        if (!write_all(csock, &reply, sizeof reply)) go = good = false;
+        reply.error = 0;
+      };
+
       while (go && read_all(csock, &request, sizeof request)) {
         if (check_sig()) {
           go = false;
@@ -398,62 +413,95 @@ class NbdServer {
         memcpy(reply.handle, request.handle, sizeof reply.handle);
         if (!_thedev.good()) {
           // error in underlying device; send EIO and shut it down
-          reply.error = htonl(EIO);
+          reply_err(EIO, "Unrecoverable I/O error in device");
           go = false;
-          if (!write_all(csock, &reply, sizeof reply)) good = false;
           break;
         }
-        size_t start, len;
+        auto from = ntohll(request.from);
+        auto len = ntohl(request.len);
+        size_t startb = from / blocksize;
+        unsigned startoff = from % blocksize;
+        size_t endb = (from + len - 1) / blocksize;
+        unsigned endoff = (from + len) % blocksize;
+        size_t lenb = endb + 1 - startb;
         switch (ntohl(request.type)) {
           case NBD_CMD_READ:
-            start = ntohll(request.from) / blocksize;
-            len = ntohl(request.len) / blocksize;
-            if (start + len > numblocks) {
-              reply.error = htonl(EFAULT);
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              reply.error = htonl(0);
-            } else {
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              if (!_thedev.read_to_fd(start, len, csock)) go = good = false;
+            logout() << "Requested read of " << lenb << " blocks starting at " << startb << std::endl;
+            if (endb >= numblocks) {
+              reply_err(EFAULT, "read requested past end of device");
+              break;
             }
+            buffer.reserve(lenb * blocksize);
+            _thedev.multiread(startb, lenb, buffer.data());
+            if (!_thedev.good()) {
+              reply_err(EIO, "some device I/O error occurred");
+              // try to clear the error with a trivial read
+              _thedev.read(0, buffer.data());
+              break;
+            }
+            if (!write_all(csock, &reply, sizeof reply)) go = good = false;
+            else if (!write_all(csock, buffer.data() + startoff, len))
+              go = good = false;
             break;
           case NBD_CMD_WRITE:
-            start = ntohll(request.from) / blocksize;
-            len = ntohl(request.len) / blocksize;
-            if (start + len > numblocks) {
-              reply.error = htonl(EFAULT);
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              reply.error = htonl(0);
-            } else {
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              if (!_thedev.write_from_fd(start, len, csock)) go = good = false;
+            logout() << "Requested write of " << lenb << " blocks starting at " << startb << std::endl;
+            if (endb >= numblocks) {
+              reply_err(EFAULT, "write requested past end of device");
+              break;
             }
+            buffer.reserve(lenb * blocksize);
+            if (startoff) {
+              logout() << "Warning: start of write not block-aligned" << std::endl;
+              _thedev.read(startb, buffer.data());
+            }
+            if (endoff) {
+              logout() << "Warning: end of write not block-aligned" << std::endl;
+              _thedev.read(endb, buffer.data() + ((lenb - 1) * blocksize));
+            }
+            if (!read_all(csock, buffer.data() + startoff, len)) {
+              go = good = false;
+              break;
+            }
+            _thedev.multiwrite(startb, lenb, buffer.data());
+            if (!_thedev.good()) {
+              reply_err(EIO, "some device I/O error occurred");
+              // try to clear the error with a trivial read
+              _thedev.read(0, buffer.data());
+              break;
+            }
+            if (!write_all(csock, &reply, sizeof reply)) go = good = false;
             break;
           case NBD_CMD_DISC:
-            _thedev.flush();
+            logout() << "Requested disconnect request" << std::endl;
             go = false;
-            if (!write_all(csock, &reply, sizeof reply)) good = false;
             // note fall-through
           case NBD_CMD_FLUSH:
-            _thedev.flush();
+            logout() << "Performing flush" << std::endl;
+            if (_thedev.flushes()) _thedev.flush();
+            if (!write_all(csock, &reply, sizeof reply)) good = false;
             break;
           case NBD_CMD_TRIM:
-            start = ntohll(request.from) / blocksize;
-            len = ntohl(request.len) / blocksize;
-            if (start + len > numblocks) {
-              reply.error = htonl(EFAULT);
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              reply.error = htonl(0);
-            } else {
-              if (!write_all(csock, &reply, sizeof reply)) go = good = false;
-              _thedev.trim(start, len);
+            logout() << "Requested trim of " << lenb << " blocks starting at " << startb << std::endl;
+            if (_thedev.trims()) {
+              if (lenb == 0) break;
+              if (startoff) {
+                ++startb;
+                if (--lenb == 0) break;
+              }
+              if (endoff) {
+                --endb;
+                if (--lenb == 0) break;
+              }
+              if (endb >= numblocks) {
+                endb = numblocks - 1;
+                lenb = endb + 1 - startb;
+              }
+              _thedev.trim(startb, lenb);
             }
+            if (!write_all(csock, &reply, sizeof reply)) go = good = false;
             break;
           default:
-            errout() << "Error: received invalid request "
-              << ntohl(request.type) << "\n";
-            reply.error = htonl(EINVAL);
-            if (!write_all(csock, &reply, sizeof reply)) go = good = false;
+            reply_err(EINVAL, "received invalid request");
             break;
         }
       }
@@ -485,75 +533,130 @@ class NbdServer {
       if (!write_all(csock, &smallflags, sizeof smallflags)) return false;
       if (!read_all(csock, &cflags, sizeof cflags)) return false;
       cflags = htonl(cflags);
-      while (true) {
-        if (check_sig()) return false;
-        if (!read_all(csock, &magic, sizeof magic)) return false;
-        magic = ntohll(magic);
-        if(magic != opts_magic) {
-          errout() << "Error: magic mismatch in negotiation\n";
-          return false;
-        }
-        if (!read_all(csock, &opt, sizeof opt)) return false;
-        opt = ntohl(opt);
-        // every message has a length
+      if (check_sig()) return false;
+      if (!read_all(csock, &magic, sizeof magic)) return false;
+      magic = ntohll(magic);
+      if(magic != opts_magic) {
+        errout() << "Error: magic mismatch in negotiation\n";
+        return false;
+      }
+      if (!read_all(csock, &opt, sizeof opt)) return false;
+      opt = ntohl(opt);
+      if (opt == NBD_OPT_EXPORT_NAME) {
         uint32_t msglen;
         if (!read_all(csock, &msglen, sizeof msglen)) return false;
         msglen = ntohl(msglen);
-        switch(opt) {
-          case NBD_OPT_EXPORT_NAME:
-            {
-              // pretend to read the specified name
-              read_ignore(csock, msglen);
-              // send the info about this export now
-              uint16_t flags = NBD_FLAG_HAS_FLAGS;
-              uint64_t size_host = _thedev.blocksize() * _thedev.numblocks();
-              size_host = htonll(size_host);
-              if (!write_all(csock, &size_host, 8)) return false;
-              if (_thedev.flushes()) flags |= NBD_FLAG_SEND_FLUSH;
-              if (_thedev.trims()) flags |= NBD_FLAG_SEND_TRIM;
-              flags = htons(flags);
-              if (!write_all(csock, &flags, sizeof flags)) return false;
-              if (!(cflags & NBD_FLAG_C_NO_ZEROES)) {
-                char zeros[128] = {};
-                // TODO why is this 124?
-                if (!write_all(csock, zeros, 124)) return false;
-              }
-              return true;
-            }
-            break; // unreachable
-          case NBD_OPT_LIST:
-            {
-              // msglen should be zero, but just in case...
-              read_ignore(csock, msglen);
-              std::string srvname = "NBDCPP_SERVER";
-              msglen = srvname.length();
-              auto nwlen = htonl(msglen);
-              if( !send_reply(csock, opt, NBD_REP_SERVER, msglen + sizeof msglen) ||
-                  !write_all(csock, &nwlen, sizeof msglen) ||
-                  !write_all(csock, srvname.c_str(), msglen) ||
-                  !send_reply(csock, opt, NBD_REP_ACK, 0))
-                return false;
-            }
-            break;
-          case NBD_OPT_ABORT:
-            logout() << "Session terminated by client during negotiation phase" << std::endl;
-            return false;
-            break; // unreachable
-          default:
-            if (!send_reply(csock, opt, NBD_REP_ERR_UNSUP, 0)) return false;
-            break;
+        // pretend to read the specified name
+        read_ignore(csock, msglen);
+        // send the info about this export now
+        uint16_t flags = NBD_FLAG_HAS_FLAGS;
+        uint64_t size_host = _thedev.blocksize() * _thedev.numblocks();
+        size_host = htonll(size_host);
+        if (!write_all(csock, &size_host, 8)) return false;
+        if (_thedev.flushes()) flags |= NBD_FLAG_SEND_FLUSH;
+        if (_thedev.trims()) flags |= NBD_FLAG_SEND_TRIM;
+        flags = htons(flags);
+        if (!write_all(csock, &flags, sizeof flags)) return false;
+        if (!(cflags & NBD_FLAG_C_NO_ZEROES)) {
+          char zeros[128] = {};
+          // I don't know why this is 124, but copied from nbd-server.c and it works...
+          if (!write_all(csock, zeros, 124)) return false;
         }
+        return true;
+      } else {
+        errout() << "Unsupported operation from client; terminating connection\n";
+        return false;
       }
-      return false; // unreachable
     }
 };
 
-// convenience factory method to create NbdServer objects
-template <typename DevT, typename SockT, typename... DevArgs>
-NbdServer<DevT,SockT>
-  create_nbd_server(const SockT& sockaddr, DevArgs&&... devargs)
-{
-  return NbdServer<DevT,SockT>(sockaddr, std::forward<DevArgs>(devargs)...);
+std::string nbd_usage_line() { return " ([host:][port] | -u file)"; }
+
+void nbd_usage_doc(std::ostream& out) {
+  out << "  host can be \"localhost\" or an IPv4 dotted pair; default is localhost\n"
+      << "  port defaults to " << IP4Sock::DEFPORT << "\n"
+      << "  -u means to use a unix socket associated to the given file"
+      << std::endl;
+}
+
+template <typename DevT, typename UsageFun, typename... DevArgs>
+int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... devargs) {
+  // process command line arguments
+  bool unix = false;
+  bool gothost = false;
+  std::string host = "localhost";
+  int port = IP4Sock::DEFPORT;
+  for (; argind < argc; ++argind) {
+    std::string curarg = argv[argind];
+    if (curarg == "-u") {
+      unix = true;
+      // the host will be considered the filename
+    } else if (curarg.find('-') == 0) {
+      // some other option, not supported
+      usage();
+      return 1;
+    } else if (!gothost) {
+      if (unix) {
+        host = curarg;
+      } else {
+        auto colon = curarg.find(':');
+        if (colon != curarg.npos) {
+          host = curarg.substr(colon);
+          if (colon < curarg.size() - 1) {
+            curarg = curarg.substr(colon+1);
+            colon = curarg.npos;
+          }
+        }
+        if (colon == curarg.npos) {
+          if (!(std::istringstream(curarg) >> port)) {
+            usage();
+            return 1;
+          }
+        }
+      }
+      gothost = true;
+    } else {
+      usage();
+      return 1;
+    }
+  }
+
+  // check socket file for unix sockets
+  if (unix) {
+    if (!gothost) {
+      usage();
+      return 1;
+    }
+    // the socket file must not exist yet
+    if (access(host.c_str(), F_OK) == 0) {
+      infoout() << "Error: socket file " << host
+          << " already exists. Delete it now? (Y/n) " << std::flush;
+      std::string resp;
+      std::getline(std::cin, resp);
+      auto letter = std::find_if(resp.begin(), resp.end(),
+          [](int ch){return !std::isspace(ch);});
+      if (letter != resp.end() && std::tolower(*letter) != 'y') return 1;
+    } else {
+      // try to create the file
+      int fd = creat(host.c_str(), 0777);
+      if (fd < 0) {
+        errout() << "Error: cannot create socket file " << host << std::endl;
+        return 1;
+      }
+      close(fd);
+    }
+    unlink(host.c_str());
+  }
+
+  if (unix) {
+    NbdServer<DevT,UnixSock> serv(UnixSock(host), std::forward<DevArgs>(devargs)...);
+    serv.connect_many();
+  } else {
+    NbdServer<DevT,IP4Sock> serv(IP4Sock(port, host), std::forward<DevArgs>(devargs)...);
+    serv.connect_many();
+  }
+
+  return 0;
 }
 
 } // namespace nbdcpp
