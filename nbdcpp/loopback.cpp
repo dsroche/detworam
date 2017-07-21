@@ -105,10 +105,10 @@ using namespace nbdcpp;
 
 int main(int argc, char** argv) {
   auto usage = [argv]() {
-    cerr << "usage: " << argv[0] << " file [-s size]" << nbd_usage_line() << "\n";
-    cerr << "  Provides a loopback device connected to the given file.\n";
-    cerr << "  size is in KB; if not given, the current filesize is used.\n";
-    nbd_usage_doc(cerr);
+    errout() << "usage: " << argv[0] << " file [-s size]" << nbd_usage_line() << "\n";
+    errout() << "  Provides a loopback device connected to the given file.\n";
+    errout() << "  size is in KB; if not given, the current filesize is used.\n";
+    nbd_usage_doc(errout());
   };
 
   int argind = 1;

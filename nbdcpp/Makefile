@@ -1,7 +1,10 @@
 CXX ?= g++
-CPPFLAGS ?= -Wall -Wextra -Werror -Wno-unused-parameter -fmax-errors=1
+CPPFLAGS ?= -Wall -Wextra -Wno-unused-parameter
 CXXFLAGS ?= -std=c++11 -pedantic
-CPPFLAGS += -ggdb -Og
+# fast options
+CPPFLAGS += -march=native -Ofast
+# debug options
+# CPPFLAGS += -ggdb -Og -DNBDCPP_DEBUG -Werror -fmax-errors=1
 
 EXPROGS = ramdisk loopback
 

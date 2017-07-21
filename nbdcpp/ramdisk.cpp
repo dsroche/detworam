@@ -5,15 +5,12 @@
 #include <algorithm>
 #include <sstream>
 
-using namespace std;
-using namespace nbdcpp;
-
 // modeled on DevExample from nbdserv.h
 // stores the blocks as a vector of block-sized arrays
 template <unsigned BS=4096>
 class RamDisk {
   private:
-    std::vector<std::array<byte, BS>> _data;
+    std::vector<std::array<nbdcpp::byte, BS>> _data;
 
   public:
     RamDisk(size_t nblocks) :_data(nblocks) { }
@@ -30,25 +27,25 @@ class RamDisk {
     // read a single block from the device
     // index is the index of the block
     // data is a pointer to an array of size at last blocksize()
-    void read(size_t index, byte* data) const {
+    void read(size_t index, nbdcpp::byte* data) const {
       std::copy(_data.at(index).begin(), _data.at(index).end(), data);
     }
 
     // write a single block to the device
     // index is the index of the block
     // data is a pointer to an array of size at last blocksize()
-    void write(size_t index, const byte* data) {
+    void write(size_t index, const nbdcpp::byte* data) {
       std::copy(data, data + BS, _data.at(index).begin());
     }
 
     // read multiple blocks at once
-    void multiread(size_t index, size_t count, byte* data) const {
-      multiread_default(*this, index, count, data);
+    void multiread(size_t index, size_t count, nbdcpp::byte* data) const {
+      nbdcpp::multiread_default(*this, index, count, data);
     }
 
     // write multiple blocks at once
-    void multiwrite(size_t index, size_t count, const byte* data) {
-      multiwrite_default(*this, index, count, data);
+    void multiwrite(size_t index, size_t count, const nbdcpp::byte* data) {
+      nbdcpp::multiwrite_default(*this, index, count, data);
     }
 
     // returns true iff the flush operation is supported
@@ -64,12 +61,15 @@ class RamDisk {
     void trim(size_t index, size_t count) { }
 };
 
+using namespace std;
+using namespace nbdcpp;
+
 int main(int argc, char** argv) {
   auto usage = [argv]() {
-    cerr << "usage: " << argv[0] << " size" << nbd_usage_line() << "\n";
-    cerr << "  Provides a ramdisk over an NBD server.\n";
-    cerr << "  size is the size of the ramdisk in KB\n";
-    nbd_usage_doc(cerr);
+    errout() << "usage: " << argv[0] << " size" << nbd_usage_line() << "\n";
+    errout() << "  Provides a ramdisk over an NBD server.\n";
+    errout() << "  size is the size of the ramdisk in KB\n";
+    nbd_usage_doc(errout());
   };
 
   // size must be the first command line argument

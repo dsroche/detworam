@@ -346,7 +346,7 @@ class NbdServer {
       infoout() << "To connect, run the following command as root:\n"
         << "  nbd-client ";
       sockaddr.show_client(infoout());
-      infoout() << " /dev/nbd0 -block-size " << _thedev.blocksize() << "\n"
+      infoout() << " -block-size " << _thedev.blocksize() << " -Nx /dev/nbd0\n"
         << "(optionally changing /dev/nbd0 to another nbd device or adding other options)"
         << std::endl;
     }
@@ -407,7 +407,7 @@ class NbdServer {
         [this, &csock, &reply, &go, &good]
         (int ercode, const char* msg)
       {
-        logout() << "Error: " << msg << "\n";
+        logout() << "Replying with error: " << msg << "\n";
         reply.error = htonl(ercode);
         if (!write_all(csock, &reply, sizeof reply)) go = good = false;
         reply.error = 0;
@@ -439,7 +439,9 @@ class NbdServer {
         size_t lenb = endb + 1 - startb;
         switch (ntohl(request.type)) {
           case NBD_CMD_READ:
+#ifdef NBDCPP_DEBUG
             logout() << "Requested read of " << lenb << " blocks starting at " << startb << std::endl;
+#endif
             if (endb >= numblocks) {
               reply_err(EFAULT, "read requested past end of device");
               break;
@@ -457,7 +459,9 @@ class NbdServer {
               go = good = false;
             break;
           case NBD_CMD_WRITE:
+#ifdef NBDCPP_DEBUG
             logout() << "Requested write of " << lenb << " blocks starting at " << startb << std::endl;
+#endif
             if (endb >= numblocks) {
               reply_err(EFAULT, "write requested past end of device");
               break;
@@ -489,12 +493,16 @@ class NbdServer {
             go = false;
             // note fall-through
           case NBD_CMD_FLUSH:
+#ifdef NBDCPP_DEBUG
             logout() << "Performing flush" << std::endl;
+#endif
             if (_thedev.flushes()) _thedev.flush();
             if (!write_all(csock, &reply, sizeof reply)) good = false;
             break;
           case NBD_CMD_TRIM:
+#ifdef NBDCPP_DEBUG
             logout() << "Requested trim of " << lenb << " blocks starting at " << startb << std::endl;
+#endif
             if (_thedev.trims()) {
               if (lenb == 0) break;
               if (startoff) {
@@ -590,7 +598,7 @@ void nbd_usage_doc(std::ostream& out) {
       << "  port defaults to " << IP4Sock::DEFPORT << "\n"
       << "  -u means to use a unix socket associated to the given file\n"
       << "  -l specifies the file to append log and error messages to instead of stdout/stderr\n"
-      << "  -d means to go into the background (daemonize). The -l option MUST be specified.\n"
+      << "  -d means to go into the background (daemonize).\n"
       << "  -q means \"quiet\": suppress all output except (possibly) the daemon PID"
       << std::endl;
 }
@@ -606,7 +614,7 @@ int nbdserv_run(ServT&& serv, bool daemonize) {
     if (pid) {
       // parent
       infoout() << "Send SIGINT to gracefully kill the server, as in:\n"
-        << "  kill -SIGINT ";
+        << "  kill -INT ";
       // print pid even if in quiet mode
       std::cout << pid << std::endl;
       _exit(0);
@@ -654,6 +662,8 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
       }
     } else if (curarg == "-d") {
       daemonize = true;
+      logout_ptr() = &logfile;
+      errout_ptr() = &logfile;
     } else if (curarg == "-q") {
       quiet = true;
       infoout_ptr() = &nullfile;
@@ -687,13 +697,6 @@ int nbdcpp_main(int argc, char** argv, int argind, UsageFun usage, DevArgs&&... 
       usage();
       return 1;
     }
-  }
-
-  // check log file if daemonized
-  if (daemonize && !logfile.is_open()) {
-    errout() << "Error: daemon option requires log file\n";
-    usage();
-    return 1;
   }
 
   // check socket file for unix sockets
