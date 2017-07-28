@@ -12,19 +12,34 @@ class Loopback {
     mutable std::fstream _file;
     int _nblocks;
 
+    static constexpr std::ios_base::openmode openflags() {
+      return std::fstream::in | std::fstream::out | std::fstream::binary;
+    }
+
   public:
     Loopback(const std::string& fname, size_t nblocks=0)
-      :_file(fname.c_str())
+      :_file(fname.c_str(), openflags())
     {
-      if (!_file) {
-        nbdcpp::errout() << "ERROR: could not open device file " << fname << "\n";
-        exit(1);
+      decltype(_file.tellg()-_file.tellg()) actsize;
+      if (_file) {
+        // check the file size
+        auto start = _file.tellg();
+        _file.seekg(0, std::ios::end);
+        actsize = _file.tellg() - start;
+      } else {
+        if (nblocks == 0) {
+          nbdcpp::errout() << "Error: file " << fname << " doesn't exist or couldn't be opened\n";
+          exit(1);
+        }
+        // try opening with trunc to create it
+        _file.open(fname.c_str(), openflags() | std::fstream::trunc);
+        if (!_file) {
+          nbdcpp::errout() << "ERROR: could not open or create file " << fname << "\n";
+          exit(1);
+        }
+        actsize = 0;
       }
 
-      // check the file size
-      auto start = _file.tellg();
-      _file.seekg(0, std::ios::end);
-      auto actsize = _file.tellg() - start;
       if (nblocks == 0) {
         // determine nblocks from actual size
         if (actsize <= 0) {

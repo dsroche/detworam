@@ -331,6 +331,8 @@ class NbdServer {
     }
 
   public:
+    static constexpr unsigned blocksize() { return DevT::blocksize(); }
+
     template <typename... DevArgs>
     NbdServer(const SockT& sockaddr, DevArgs&&... devargs)
       :_thedev(std::forward<DevArgs>(devargs)...)
@@ -393,7 +395,7 @@ class NbdServer {
     // returns whether it's POSSIBLE to restart with a new connection
     bool run_connection(int csock) {
       std::vector<byte> buffer;
-      constexpr size_t blocksize = _thedev.blocksize();
+      constexpr auto blocksize = DevT::blocksize();
       size_t numblocks = _thedev.numblocks();
       struct nbd_request request;
       struct nbd_reply reply = {};
@@ -615,8 +617,8 @@ int nbdserv_run(ServT&& serv, bool daemonize) {
       // parent
       infoout() << "Send SIGINT to gracefully kill the server, as in:\n"
         << "  kill -INT ";
-      // print pid even if in quiet mode
-      std::cout << pid << std::endl;
+      // print pid and blocksize if in quiet mode
+      std::cout << pid << ' ' << serv.blocksize() << std::endl;
       _exit(0);
     }
     if (setsid() < 0) {

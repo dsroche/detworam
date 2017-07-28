@@ -185,8 +185,15 @@ fi
 # now remove the socket file to avoid error message when server starts
 rm -f "$sockfile"
 
-# start the actual server process and save its pid
-spid=$("$server" "$@" -q -u "$sockfile" ${logfile:+-l "$logfile"} -d)
+# start the actual server process and save its pid and blocksize
+if ! sinfo=($("$server" "$@" -q -u "$sockfile" ${logfile:+-l "$logfile"} -d))
+then
+  $quiet || echo "ERROR starting the server (see above)"
+  rm -f "$killfile"
+  $templog && rm -f "$logfile"
+  rm -f "$sockfile"
+  exit 4
+fi
 
 # create the kill script
 exec 4>"$killfile"
@@ -203,7 +210,7 @@ if [[ \$(id -u) -ne 0 ]]; then
 fi
 
 devfile="$devfile"
-server_pid="$spid"
+server_pid="${sinfo[0]}"
 sockfile="$sockfile"
 EOF
 $templog && echo "logfile=\"$logfile\"" >&4
@@ -231,7 +238,7 @@ while [[ ! -e $sockfile ]]; do
 done
 
 # connect to the server using nbd-client
-$getroot nbd-client -u "$sockfile" "$devfile" >/dev/null 2>&1
+$getroot nbd-client -Nx -block-size "${sinfo[1]}" -u "$sockfile" "$devfile" >/dev/null 2>&1
 
 if $daemonize; then
   if $quiet; then
