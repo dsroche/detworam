@@ -5,9 +5,9 @@
 #include <limits>
 #include <type_traits>
 #include <memory>
-#include <woram/errors.h>
+#include <detworam/errors.h>
 
-namespace woram {
+namespace detworam {
 
 using std::size_t;
 
@@ -78,6 +78,6 @@ template <typename T> struct is_posmap :public std::false_type { };
 // Split memory trait
 template <typename T> struct is_split :public std::false_type { };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_COMMON_H

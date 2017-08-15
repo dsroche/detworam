@@ -1,18 +1,18 @@
 #include <iostream>
 
-#include <woram/common.h>
-#include <woram/errors.h>
-#include <woram/bytenum.h>
-#include <woram/memory.h>
-#include <woram/filemem.h>
-#include <woram/posmap.h>
-#include <woram/woram.h>
-#include <woram/detworam.h>
-#include <woram/split.h>
-#include <woram/pack.h>
-#include <woram/recursive.h>
-#include <woram/triepm.h>
-#include <woram/crypto.h>
+#include <detworam/common.h>
+#include <detworam/errors.h>
+#include <detworam/bytenum.h>
+#include <detworam/memory.h>
+#include <detworam/filemem.h>
+#include <detworam/posmap.h>
+#include <detworam/woram.h>
+#include <detworam/detworam.h>
+#include <detworam/split.h>
+#include <detworam/pack.h>
+#include <detworam/recursive.h>
+#include <detworam/triepm.h>
+#include <detworam/crypto.h>
 
 #include <fstream>
 #include <cstring>
@@ -21,7 +21,7 @@
 #include <string>
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 #define RUN(STR,IND) do { \
   strncpy(s, STR, ss); \

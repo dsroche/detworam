@@ -4,10 +4,10 @@
 #include <type_traits>
 #include <algorithm>
 
-#include <woram/common.h>
-#include <woram/errors.h>
+#include <detworam/common.h>
+#include <detworam/errors.h>
 
-namespace woram {
+namespace detworam {
 
 // this is an ARCHETYPE - don't derive from it
 template <size_t B, size_t N>
@@ -59,6 +59,6 @@ template <size_t B, size_t N>
 struct is_memory<LocalMem<B,N>> :public std::true_type { };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_MEMORY_H

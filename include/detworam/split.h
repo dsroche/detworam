@@ -3,10 +3,10 @@
 
 #include <type_traits>
 
-#include <woram/common.h>
-#include <woram/memory.h>
+#include <detworam/common.h>
+#include <detworam/memory.h>
 
-namespace woram {
+namespace detworam {
 
 // this is an ARCHETYPE - don't derive from it
 template <typename MemT, size_t X, size_t Y=(MemT::size()-X)>
@@ -80,6 +80,6 @@ template <typename MemT, size_t X, size_t Y>
 struct is_split<ChunkSplit<MemT,X,Y>> :public std::true_type { };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_SPLIT_H

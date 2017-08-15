@@ -1,12 +1,12 @@
 #include <iostream>
 #include <memory>
-#include <woram/pack.h>
-#include <woram/memory.h>
+#include <detworam/pack.h>
+#include <detworam/memory.h>
 #include "memtest.h"
 #include "pmtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <size_t B, size_t N>
 struct MemFact {

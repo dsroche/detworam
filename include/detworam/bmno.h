@@ -4,13 +4,13 @@
 #include <mbedtls/aes.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
-#include <woram/common.h>
-#include <woram/split.h>
-#include <woram/pack.h>
-#include <woram/woram.h>
-#include <woram/crypto.h>
+#include <detworam/common.h>
+#include <detworam/split.h>
+#include <detworam/pack.h>
+#include <detworam/woram.h>
+#include <detworam/crypto.h>
 
-namespace woram {
+namespace detworam {
 
 // metadata block
 template <unsigned indsize, size_t cblock>
@@ -509,6 +509,6 @@ template <typename PMT>
 struct Committer<PMT,true> { void operator()(PMT& pm) { pm.commit(); } };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_BMNO_H

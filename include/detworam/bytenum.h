@@ -2,9 +2,9 @@
 #define WORAM_BYTENUM_H
 
 #include <cstring>
-#include <woram/common.h>
+#include <detworam/common.h>
 
-namespace woram {
+namespace detworam {
 
 // try to determine endianness
 // source: http://stackoverflow.com/a/27054190/1008966
@@ -68,6 +68,6 @@ size_t getnum(const unsigned char* buf) {
   return res;
 }
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_BYTENUM_H

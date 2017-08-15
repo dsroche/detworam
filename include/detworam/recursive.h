@@ -1,11 +1,11 @@
 #ifndef WORAM_RECURSIVE_H
 #define WORAM_RECURSIVE_H
 
-#include <woram/posmap.h>
-#include <woram/pack.h>
-#include <woram/split.h>
+#include <detworam/posmap.h>
+#include <detworam/pack.h>
+#include <detworam/split.h>
 
-namespace woram {
+namespace detworam {
 
 // some traits for a recursive Woram built on the given type and backend mem
 template <typename BMT, typename PWTrait,
@@ -28,7 +28,8 @@ struct RecWoTrait {
 };
 
 
-// RecWoramFactory is used to define types for and create Recursive woram instances.
+// RecWoramFactory is used to define types for and create
+// recursive write-only ORAM instances.
 // this is the forward declaration with default template values
 template <typename BMT,
           size_t N,
@@ -105,6 +106,6 @@ struct RecWoramFactory<BMT,N,PWTrait,RecTrait,true> {
 };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_RECURSIVE_H

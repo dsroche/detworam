@@ -1,11 +1,11 @@
 #include <iostream>
 #include <memory>
-#include <woram/split.h>
-#include <woram/memory.h>
+#include <detworam/split.h>
+#include <detworam/memory.h>
 #include "memtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <template <typename,size_t,size_t> class SplitT, size_t Tot, size_t X>
 struct Fact {

@@ -1,10 +1,10 @@
 #ifndef WORAM_WORAM_H
 #define WORAM_WORAM_H
 
-#include <woram/posmap.h>
-#include <woram/split.h>
+#include <detworam/posmap.h>
+#include <detworam/split.h>
 
-namespace woram {
+namespace detworam {
 
 // this is an ARCHETYPE - don't derive from it
 // similar to Memory, but there's the extra position information
@@ -18,7 +18,7 @@ class PlainWoram final {
     static constexpr size_t size() { return N; }
     // this should be the size of pointers, i.e., the largest pointer value plus 1
     static constexpr size_t pmax();
-    // this indicates a "null pointer" in the woram
+    // this indicates a "null pointer" in the write-only ORAM
     static constexpr size_t nptr() { return pmax() + 1; }
 
     void load(size_t index, size_t position, byte* buf) const;
@@ -222,6 +222,6 @@ template <typename BMT, size_t N>
 struct is_memory<TrivialWoram<BMT,N>> :public std::true_type { };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_WORAM_H

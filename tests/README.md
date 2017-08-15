@@ -2,7 +2,7 @@ Deterministic Write-Only ORAM library test programs
 ===================================================
 
 The programs here can be used to check the correctness
-of the `woram` C++14 header library.
+of the `detworam` C++14 header library.
 
 Some tests depend on the mbed TLS library, which should
 be included in the subfolder `mbedtls` in this same repository.

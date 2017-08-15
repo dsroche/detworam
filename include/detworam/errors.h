@@ -6,7 +6,7 @@
 #include <array>
 #endif
 
-namespace woram {
+namespace detworam {
 
 #ifndef WORAM_NOEXCEPT
 
@@ -81,6 +81,6 @@ template <typename Int>
 inline void check_range(Int& val, const Int& max, const char* msg)
 { check_range<Int>(val, 0, max, msg); }
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_ERRORS

@@ -1,5 +1,5 @@
 CXXFLAGS += -std=c++14 -pedantic
-CXXFLAGS += -I.. -I../mbedtls/include
+CXXFLAGS += -I../include -I../mbedtls/include
 CXXFLAGS += -Wall -Wextra -Werror
 CXXFLAGS += -ggdb -Og
 CXXFLAGS += -DWORAM_DEBUG

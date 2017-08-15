@@ -8,9 +8,9 @@
 
 #include <tuple>
 
-#include <woram/common.h>
+#include <detworam/common.h>
 
-namespace woram {
+namespace detworam {
 
 #ifdef WORAM_DEBUG
 

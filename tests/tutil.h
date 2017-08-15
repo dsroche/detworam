@@ -15,7 +15,7 @@
   } \
 } while (0)
 
-namespace woram {
+namespace detworam {
 
 using RGT = std::mt19937_64;
 inline RGT& rgen() {
@@ -79,6 +79,6 @@ struct TestA {
   }
 };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_TUTIL_H

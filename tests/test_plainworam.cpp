@@ -1,10 +1,10 @@
 #include <iostream>
-#include <woram/woram.h>
-#include <woram/detworam.h>
+#include <detworam/woram.h>
+#include <detworam/detworam.h>
 #include "memtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <typename PWTrait>
 struct PWF {

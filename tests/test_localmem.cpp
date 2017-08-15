@@ -1,10 +1,10 @@
 #include <iostream>
 #include <memory>
-#include <woram/memory.h>
+#include <detworam/memory.h>
 #include "memtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <size_t B, size_t N>
 struct Fact {

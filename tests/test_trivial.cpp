@@ -1,9 +1,9 @@
 #include <iostream>
-#include <woram/woram.h>
+#include <detworam/woram.h>
 #include "memtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <size_t B, size_t N>
 struct Fact {

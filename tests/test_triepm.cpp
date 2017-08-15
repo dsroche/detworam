@@ -1,15 +1,15 @@
 #include <iostream>
 #include <memory>
 
-#include <woram/memory.h>
-#include <woram/triepm.h>
-#include <woram/woram.h>
-#include <woram/detworam.h>
+#include <detworam/memory.h>
+#include <detworam/triepm.h>
+#include <detworam/woram.h>
+#include <detworam/detworam.h>
 
 #include "pmtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <typename PWTrait, size_t B, size_t MemN>
 struct Fact {

@@ -1,12 +1,12 @@
 #ifndef WORAM_POSMAP_H
 #define WORAM_POSMAP_H
 
-#include <woram/common.h>
-#include <woram/bytenum.h>
-#include <woram/memory.h>
-#include <woram/errors.h>
+#include <detworam/common.h>
+#include <detworam/bytenum.h>
+#include <detworam/memory.h>
+#include <detworam/errors.h>
 
-namespace woram {
+namespace detworam {
 
 // this is an ARCHETYPE - don't derive from it
 // MemT is the underlying backend memory type
@@ -63,6 +63,6 @@ class LocalPosMap {
 template <size_t N, size_t M>
 struct is_posmap<LocalPosMap<N,M>> :public std::true_type { };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_POSMAP_H

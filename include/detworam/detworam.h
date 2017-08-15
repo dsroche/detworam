@@ -4,13 +4,13 @@
 #include <type_traits>
 #include <ratio>
 
-#include <woram/common.h>
-#include <woram/woram.h>
-#include <woram/split.h>
-#include <woram/recursive.h>
-#include <woram/debug.h>
+#include <detworam/common.h>
+#include <detworam/woram.h>
+#include <detworam/split.h>
+#include <detworam/recursive.h>
+#include <detworam/debug.h>
 
-namespace woram {
+namespace detworam {
 
 // This is a helper class to represent a "pointer" within a
 // detworam. which consists of the holding area index,
@@ -23,8 +23,8 @@ class DWPointer {
     static constexpr size_t blockbits()
     { return bits_per_byte() * B; }
 
-    static constexpr unsigned hold_bits() { return woram::bitlen(holdsize()-1); }
-    static constexpr unsigned bind_bits() { return woram::bitlen(blockbits()-1); }
+    static constexpr unsigned hold_bits() { return detworam::bitlen(holdsize()-1); }
+    static constexpr unsigned bind_bits() { return detworam::bitlen(blockbits()-1); }
 
     static constexpr unsigned bitlen() { return hold_bits() + bind_bits() + 1; }
     static constexpr unsigned bytelen()
@@ -186,6 +186,6 @@ struct DetWoramTrait {
 };
 
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_DETWORAM_H

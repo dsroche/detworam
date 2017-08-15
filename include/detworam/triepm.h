@@ -2,14 +2,14 @@
 #define WORAM_TRIEPM_H
 
 #include <algorithm>
-#include <woram/common.h>
-#include <woram/bytenum.h>
-#include <woram/pack.h>
-#include <woram/detworam.h>
-#include <woram/errors.h>
-#include <woram/crypto.h>
+#include <detworam/common.h>
+#include <detworam/bytenum.h>
+#include <detworam/pack.h>
+#include <detworam/detworam.h>
+#include <detworam/errors.h>
+#include <detworam/crypto.h>
 
-namespace woram {
+namespace detworam {
 
 // helper class to store a single node in a trie
 // K is the branching factor and S is the pointer size
@@ -45,7 +45,7 @@ constexpr unsigned heighthelp(unsigned ht=0, size_t sofar=0, size_t lastrow=1)
 
 
 // helper class for the position map of the trie nodes themselves
-// (not the position map of actual positions in the main woram)
+// (not the position map of actual positions in the main write-only ORAM)
 // This class is modeled on PositionMap.
 // MemT is the backend memory type
 // N is the number of trie nodes to store - NOT including the root node
@@ -440,6 +440,6 @@ struct DetWoCryptTrie {
     >;
 };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_TRIEPM_H

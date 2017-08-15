@@ -4,14 +4,14 @@
 #include <utility>
 #include <unordered_set>
 
-#include <woram/common.h>
-#include <woram/memory.h>
-#include <woram/debug.h>
+#include <detworam/common.h>
+#include <detworam/memory.h>
+#include <detworam/debug.h>
 
 #include "tutil.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 // sizes for testing must be specified at compile-time
 // since the size is a template parameter for the Bits class.

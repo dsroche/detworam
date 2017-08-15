@@ -4,13 +4,13 @@
 #include <type_traits>
 #include <algorithm>
 
-#include <woram/common.h>
-#include <woram/bytenum.h>
-#include <woram/memory.h>
-#include <woram/posmap.h>
-#include <woram/errors.h>
+#include <detworam/common.h>
+#include <detworam/bytenum.h>
+#include <detworam/memory.h>
+#include <detworam/posmap.h>
+#include <detworam/errors.h>
 
-namespace woram {
+namespace detworam {
 
 // Modeled on Memory<B,N>
 template <typename MemT,
@@ -205,6 +205,6 @@ struct PackPosMapFactory {
   { return std::make_unique<T>(std::move(mp)); }
 };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_PACK_H

@@ -4,10 +4,10 @@
 #include <mbedtls/aes.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
-#include <woram/common.h>
-#include <woram/split.h>
+#include <detworam/common.h>
+#include <detworam/split.h>
 
-namespace woram {
+namespace detworam {
 
 // the key is global and must be set BEFORE constructing
 // any crypto instances
@@ -261,6 +261,6 @@ struct CryptSplitType {
   using RandT = RandCryptSplit<MemT,X,Y,K>;
 };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_CRYPTO_H

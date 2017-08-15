@@ -4,12 +4,12 @@
 #include <utility>
 #include <unordered_map>
 
-#include <woram/posmap.h>
+#include <detworam/posmap.h>
 
 #include "tutil.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 // sizes for testing must be specified at compile-time
 // since the size is a template parameter for the PositionMap class.

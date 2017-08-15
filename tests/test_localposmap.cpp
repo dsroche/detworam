@@ -1,13 +1,13 @@
 #include <iostream>
 #include <memory>
 
-#include <woram/posmap.h>
-#include <woram/memory.h>
+#include <detworam/posmap.h>
+#include <detworam/memory.h>
 
 #include "pmtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 template <size_t N, size_t M>
 struct Fact {

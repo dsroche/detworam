@@ -1,15 +1,15 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
-#include <woram/woram.h>
-#include <woram/detworam.h>
-#include <woram/triepm.h>
-#include <woram/crypto.h>
-#include <woram/split.h>
+#include <detworam/woram.h>
+#include <detworam/detworam.h>
+#include <detworam/triepm.h>
+#include <detworam/crypto.h>
+#include <detworam/split.h>
 #include "memtest.h"
 
 using namespace std;
-using namespace woram;
+using namespace detworam;
 
 constexpr unsigned K = 32;
 constexpr unsigned cblock = 16;

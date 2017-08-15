@@ -58,7 +58,7 @@ requirements by running the following command as root:
 # Usage
 
 To compile and run a large number of check programs on every part of the
-`woram` C++ library, run
+`detworam` C++ library, run
 
     make check
 

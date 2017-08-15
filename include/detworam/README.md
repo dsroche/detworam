@@ -8,7 +8,7 @@ There is nothing to build here; you just `#include` the
 relevant header file in your program.
 
 The cryptographic functionality in `crypto.h` requires the
-mbed TLS library, which should be included in the subfolder
+mbed TLS library, which should be included in the submodule
 `mbedtls` in this same repository.
 
 Usage
@@ -31,14 +31,14 @@ encryption and a Trie position map, backed by a 10MB file called `data.dat`,
 using block size 4KB and logical size 5MB, you could use the following
 program:
 
-    #include <woram/filemem.h>
-    #include <woram/triepm.h>
+    #include <detworam/filemem.h>
+    #include <detworam/triepm.h>
 
     int main() {
       // typedef for 10MB file with 4KB blocks
-      using Mem = woram::FileMem<4 * (1ul << 10), 10 * (1ul << 20)>;
+      using Mem = detworam::FileMem<4 * (1ul << 10), 10 * (1ul << 20)>;
       // factory to create 5MB write-only ORAM backed by Mem
-      using Factory = woram::DetWoCryptTrie<>::Factory<Mem, 5 * (1ul << 20)>;
+      using Factory = detworam::DetWoCryptTrie<>::Factory<Mem, 5 * (1ul << 20)>;
 
       // instantiate the ORAM
       auto m = Factory::create("data.dat");

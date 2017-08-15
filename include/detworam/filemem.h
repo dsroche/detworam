@@ -9,11 +9,11 @@ extern "C" {
 
 #include <type_traits>
 
-#include <woram/common.h>
-#include <woram/errors.h>
-#include <woram/memory.h>
+#include <detworam/common.h>
+#include <detworam/errors.h>
+#include <detworam/memory.h>
 
-namespace woram {
+namespace detworam {
 
 template <size_t B, size_t N>
 class FileMem {
@@ -75,6 +75,6 @@ class FileMem {
 template <size_t B, size_t N>
 struct is_memory<FileMem<B,N>> :public std::true_type { };
 
-} // namespace woram
+} // namespace detworam
 
 #endif // WORAM_FILEMEM_H
