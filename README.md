@@ -6,30 +6,38 @@ attacker that can learn the entire history of *write* operations
 to the underlying physical media.
 
 Specifically, we have a C++ library that supports an
-*encrypted virtual block device* based on
-[nbd][], [BUSE][], and [mbedTLS][].
+*encrypted virtual block device* using
+[nbdcpp][] and [mbedTLS][].
 
 [nbd]: https://nbd.sourceforge.io/
-[BUSE]: https://github.com/acozzette/BUSE
+[nbdcpp]: https://github.com/dsroche/nbdcpp
 [mbedTLS]: https://tls.mbed.org/
 
-The code and this repository are anonymized because there is
-a research article associated with this implementation that is
-currently under anonymous peer review. The authors are happy to
-collaborate with you (and share their paper) in the meantime; you
-can contact them by sending mail to <detworam@gmail.com>.
+This implementation is an academic project based at the U.S. Naval
+Academy based on research into efficient techniques to preserve privacy
+in cloud computing applications. You can read our paper for a detailed
+description and analysis:
+<https://arxiv.org/abs/1706.03827>
+
+This project was supported by the U.S. National Science Foundation under
+[award \#1618269](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1618269).
 
 # Requirements
 
 To build and use this package, you will need:
 
 +   Network Block Device driver support in your version of \*nix
++   The `nbd-client` program available in most package managers,
+    part of the [nbd project][nbd]
 +   A C++14 compatible compiler
 +   Root access in order to mount the device
 
-Compatible versions/portions of [BUSE][] and [mbedTLS][]
-are included as subdirectories in this repository, so you do not
-need to download and install them separately.
+Compatible versions/portions of [nbdcpp][] and [mbedTLS][]
+are included as submodules of this repository. If you clone using the
+`--recursive` option, you will download this repository as well as the
+subdirectories. If not, just run `git submodule init` and then `git
+submodule update` to download them after cloning the `detworam`
+repository itself.
 
 In addition to the above, if you want to reproduce our benchmarks
 you will also need:
@@ -43,7 +51,7 @@ you will also need:
 [fio]: https://github.com/axboe/fio
 
 On a Debian-based system (including Ubuntu) you can install all of these
-requirements by running the command as root:
+requirements by running the following command as root:
 
     apt install nbd-client build-essential btrfs-tools bonnie++ fio
 
@@ -67,8 +75,5 @@ Except where otherwise specified, all files in this repository are
 released into the public domain according to the
 [Unlicense](http://unlicense.org/); see `LICENSE` for details.
 
-The `BUSE` folder contains a modified version of [BUSE][], which is
-licensed under GPL version 2. See `BUSE/LICENSE` for details.
-
-The `mbedtls` folder contains a subset of [mbedTLS][], which is licensed
+The `mbedtls` submodule contains a subset of [mbedTLS][], which is licensed
 under the Apache 2.0 license; see `mbedtls/LICENSE` for details.

@@ -1,20 +1,24 @@
-all: buse crypto tests
+SUBMODULES = mbedtls nbdcpp
 
-buse:
-	make -C BUSE
+all: $(SUBMODULES) tests
 
-crypto:
-	make -C mbedtls
+$(SUBMODULES:=/README.md):
+	git submodule init
+	git submodule update
+
+$(SUBMODULES): %: %/README.md
+
+mbedtls:
+	make -C $@
 
 check: tests
 	make -C tests check
 
-tests: crypto
+tests: mbedtls
 	make -C tests
 
 clean:
-	make -C BUSE clean
 	make -C mbedtls clean
 	make -C tests clean
 
-.PHONY: all clean buse crypto check tests
+.PHONY: all clean check tests $(SUBMODULES)

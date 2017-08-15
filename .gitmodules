@@ -1,0 +1,7 @@
+[submodule "mbedtls"]
+	path = mbedtls
+	url = https://github.com/dsroche/mbedtls
+	branch = detworam
+[submodule "nbdcpp"]
+	path = nbdcpp
+	url = https://github.com/dsroche/nbdcpp
