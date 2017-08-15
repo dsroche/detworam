@@ -10,6 +10,12 @@ kernel. Some other projects with similar aims are [BUSE] and [nbdkit].
 [BUSE]: https://github.com/acozzette/BUSE
 [nbdkit]: https://github.com/libguestfs/nbdkit
 
+This package provides a C++ template class that can be used to create
+a very efficient userspace-level NBD (Network Block Device) server, as
+well as a script to start up such a server and connect to it locally,
+which allows you to create a new block device driver without writing any
+kernel code.
+
 The content of the library is really just two files:
 
 +   `nbdserv.h`: A C++ header file. It contains template classes to turn
@@ -24,17 +30,11 @@ stripped-down header-only library. Using that header file and then
 running the `makedev` script provides similar functionality to [BUSE] in
 creating a custom block device running in userspace.
 
-This package provides a C++ template class that can be used to create
-a very efficient userspace-level NBD (Network Block Device) server, as
-well as a script to start up such a server and connect to it locally,
-which allows you to create a new block device driver without writing any
-kernel code.
-
 ## Requirements
 
 Because `nbdserv.h` is a header-only library, **there is no compilation
 or library installation to use nbdcpp**. However, using this project
-requires the following prerequisites:
+requires the following to be installed:
 
 +   A recent Linux kernel which includes the [nbd] module.
 +   A compiler with C++11 support.
@@ -56,7 +56,7 @@ To create a NBD server, all you need to do is create a C++ program with:
 Compiling this program gives you an executable which, when run, launches
 an NBD server listening on a specified unix socket or network port.
 
-If you really just want to create your own block device on a single
+If you want to create your own block device on a single
 machine, run the script `makedev` with your compiled NBD server
 executable as an argument. This will launch your server and connect to
 it using a unix socket, resulting in a device such as `/dev/nbd0` which
@@ -97,7 +97,15 @@ by running (as root):
 Then of course you would want to be sure to `umount` the device before
 running the `stop-nbd0` command to disconnect from the local NBD server.
 
-# License
+# Contributors and License
+
+This package was initially written by
+[Daniel S. Roche](http://www.usna.edu/cs/roche/). It was inspired by
+the [BUSE] project by Adam Cozzette.
+
+Anyone is welcome to contribute with a pull request or by forking. You
+can also email to report any bugs, although this is an academic project
+so no promises on regular maintenance.
 
 All files in this repository are released into the public domain
 according to the [Unlicense](http://unlicense.org/); see `LICENSE` for
